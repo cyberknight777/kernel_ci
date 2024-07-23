@@ -1,0 +1,57 @@
+name: Kernel Build CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Kernel Localversion (PixelOS,AOSP)'
+        required: true
+      repo:
+        description: 'Prebuilts Repository Link (PixelOS-Devices/device_xiaomi_sunny-kernel,aosp-sunny/android_device_xiaomi_sunny-kernel)'
+        required: true
+      branch:
+        description: 'Prebuilts Repository Branch (fourteen,UpsideDownCake)'
+        required: true
+
+env:
+  TZ: Australia/Perth
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+  CHAT_ID: ${{ secrets.CHAT_ID }}
+  VERSION: ${{ github.event.inputs.version }}
+  REPO: ${{ github.event.inputs.repo }}
+  BRANCH: ${{ github.event.inputs.branch }}
+
+jobs:
+  kernel-builder:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+
+    steps:
+      - name: Environment Initialization
+        run: |
+          sudo dnf install gcc clang lld repo bc flex openssl-devel wget tar zstd bsdtar file rsync zip -y
+      - name: Repo Sync
+        run: |
+          repo init --depth=1 -u https://github.com/aosp-sunny/android_kernel_manifest.git -b master
+          repo sync --no-tags --no-clone-bundle -j$(nproc --all)
+      - name: GCC Build
+        run: |
+          sed -i s/build-user/cyberknight777/g build/_setup_env.sh
+          sed -i s/ver=..*/ver=${{ env.VERSION }}/ kernel/msm-4.14/version
+          build/build.sh
+      - name: Push Kernel
+        run: |
+            git config --global user.name "Cyber Knight"
+            git config --global user.email "cyberknight755@gmail.com"
+            git clone https://cyberknight777:${{ env.GH_TOKEN }}@github.com/${{ env.REPO }} -b ${{ env.BRANCH }} sunny-kernel
+            cp out/${{ env.BRANCH }}/dist/Image sunny-kernel
+            cp out/${{ env.BRANCH }}/dist/sm6150.dtb sunny-kernel/dtb/
+            cp out/${{ env.BRANCH }}/dist/dtbo.img sunny-kernel
+            tar -xvf out/${{ env.BRANCH }}/dist/kernel-uapi-headers.tar.gz -C sunny-kernel/kernel-headers
+            cd sunny-kernel
+            f="$(git rev-parse --git-dir)/hooks/commit-msg"; curl -o "$f" https://review.statixos.com/tools/hooks/commit-msg ; chmod +x "$f"
+            git add .
+            git commit -m "sunny-kernel: Update prebuilts $(/bin/date -u '+%d%m%Y%I%M')" -m "- Version: $(strings Image | grep 'Linux version 4')"
+            git push
