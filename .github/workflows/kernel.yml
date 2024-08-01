@@ -6,11 +6,8 @@ on:
       version:
         description: 'Kernel Localversion (PixelOS,AOSP)'
         required: true
-      repo:
-        description: 'Prebuilts Repository Link (PixelOS-Devices/device_xiaomi_sunny-kernel,aosp-sunny/android_device_xiaomi_sunny-kernel)'
-        required: true
       branch:
-        description: 'Prebuilts Repository Branch (fourteen,UpsideDownCake)'
+        description: 'Out Directory Branch (fourteen,UpsideDownCake)'
         required: true
 
 env:
@@ -19,7 +16,6 @@ env:
   BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
   CHAT_ID: ${{ secrets.CHAT_ID }}
   VERSION: ${{ github.event.inputs.version }}
-  REPO: ${{ github.event.inputs.repo }}
   BRANCH: ${{ github.event.inputs.branch }}
 
 jobs:
@@ -43,17 +39,11 @@ jobs:
           build/build.sh
       - name: Push Kernel
         run: |
-            git config --global user.name "Cyber Knight"
-            git config --global user.email "cyberknight755@gmail.com"
-            git clone https://cyberknight777:${{ env.GH_TOKEN }}@github.com/${{ env.REPO }} -b ${{ env.BRANCH }} sunny-kernel
-            cp out/${{ env.BRANCH }}/dist/Image sunny-kernel
-            cp out/${{ env.BRANCH }}/dist/sm6150.dtb sunny-kernel/dtb/
-            cp out/${{ env.BRANCH }}/dist/dtbo.img sunny-kernel
-            tar -xvf out/${{ env.BRANCH }}/dist/kernel-uapi-headers.tar.gz -C sunny-kernel/kernel-headers
-            cd sunny-kernel
-            f="$(git rev-parse --git-dir)/hooks/commit-msg"; curl -o "$f" https://review.statixos.com/tools/hooks/commit-msg ; chmod +x "$f"
-            git add .
-            git commit -m "sunny-kernel: Update prebuilts $(/bin/date -u '+%d%m%Y%I%M')" -m "- Version: $(strings Image | grep 'Linux version 4')"
-            git push
-      - name: Notify TG
-        run: curl -s -X POST https://api.telegram.org/bot${{ env.BOT_TOKEN }}/sendMessage -d chat_id=${{ env.CHAT_ID }} -d parse_mode="html" -d text="CI Kernel Build for <b>Redmi Note 10 (sunny)</b> completed."
+            git clone https://github.com/NetErnels/anykernel3 -b sunny ak3
+            mkdir -p ak3/dtbs
+            cp out/${{ env.BRANCH }}/dist/Image ak3
+            cat out/${{ env.BRANCH }}/dist/sm6150.dtb > ak3/dtb
+            cp out/${{ env.BRANCH }}/dist/dtbo.img ak3/dtbs
+            cd ak3
+            zip -r9 NetErnels-sunny-${{ env.VERSION }}.zip . -x ".git*" -x "README.md" -x "LICENSE" -x "*.zip"
+            curl -s -X POST -F document=@"NetErnels-sunny-${{ env.VERSION }}.zip" https://api.telegram.org/bot${{ env.BOT_TOKEN }}/sendDocument -F chat_id=${{ env.CHAT_ID }} -F parse_mode="html" -F caption="CI Kernel Build for <b>Redmi Note 10 (sunny)</b> completed."
