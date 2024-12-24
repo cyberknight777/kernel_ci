@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Environment Initialization
         run: |
-          sudo dnf install gcc clang lld repo bc flex openssl-devel wget tar zstd bsdtar file rsync zip -y
+          sudo dnf install gcc clang lld repo bc flex openssl-devel openssl-devel-engine wget tar zstd bsdtar file rsync zip -y
       - name: Repo Sync
         run: |
           repo init --depth=1 -u https://github.com/aosp-sunny/android_kernel_manifest.git -b master
