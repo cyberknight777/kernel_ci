@@ -14,10 +14,8 @@ on:
         required: true
 
 env:
-  TZ: Australia/Perth
+  TZ: Asia/Manila
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
-  BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-  CHAT_ID: ${{ secrets.CHAT_ID }}
   VERSION: ${{ github.event.inputs.version }}
   REPO: ${{ github.event.inputs.repo }}
   BRANCH: ${{ github.event.inputs.branch }}
@@ -31,21 +29,21 @@ jobs:
     steps:
       - name: Environment Initialization
         run: |
-          sudo dnf install gcc clang lld repo bc flex openssl-devel wget tar zstd bsdtar file rsync zip -y
+          sudo dnf install gcc clang lld repo bc flex openssl-devel openssl-devel-engine wget tar zstd bsdtar file rsync zip -y
       - name: Repo Sync
         run: |
           repo init --depth=1 -u https://github.com/aosp-sunny/android_kernel_manifest.git -b master
           repo sync --no-tags --no-clone-bundle -j$(nproc --all)
       - name: GCC Build
         run: |
-          sed -i s/build-user/cyberknight777/g build/_setup_env.sh
+          sed -i s/build-user/musivian/g build/_setup_env.sh
           sed -i s/ver=..*/ver=${{ env.VERSION }}/ kernel/msm-4.14/version
           build/build.sh
       - name: Push Kernel
         run: |
-            git config --global user.name "Cyber Knight"
-            git config --global user.email "cyberknight755@gmail.com"
-            git clone https://cyberknight777:${{ env.GH_TOKEN }}@github.com/${{ env.REPO }} -b ${{ env.BRANCH }} sunny-kernel
+            git config --global user.name "musivian"
+            git config --global user.email "kizura.vian@gmail.com"
+            git clone https://musivian:${{ env.GH_TOKEN }}@github.com/${{ env.REPO }} -b ${{ env.BRANCH }} sunny-kernel
             cp out/${{ env.BRANCH }}/dist/Image sunny-kernel
             cp out/${{ env.BRANCH }}/dist/sm6150.dtb sunny-kernel/dtb/
             cp out/${{ env.BRANCH }}/dist/dtbo.img sunny-kernel
@@ -55,5 +53,3 @@ jobs:
             git add .
             git commit -m "sunny-kernel: Update prebuilts $(/bin/date -u '+%d%m%Y%I%M')" -m "- Version: $(strings Image | grep 'Linux version 4')"
             git push
-      - name: Notify TG
-        run: curl -s -X POST https://api.telegram.org/bot${{ env.BOT_TOKEN }}/sendMessage -d chat_id=${{ env.CHAT_ID }} -d parse_mode="html" -d text="CI Kernel Build for <b>Redmi Note 10 (sunny)</b> completed."
